@@ -1,9 +1,11 @@
 [package]
 name = "htmls"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
-description = "这是一个用于解析html的库"
+description = "This is a library for parsing HTML."
 license = "Apache-2.0"
+homepage = "https://github.com/inkicchj/htmls"
+repository = "https://github.com/inkicchj/htmls"
 
 [profile.release]
 panic = "abort"
