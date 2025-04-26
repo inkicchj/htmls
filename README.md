@@ -2,6 +2,31 @@
 
 An HTML content extraction tool similar to CSS selectors that can precisely extract and process the required content from HTML documents through a simple and intuitive query language.
 
+### Example
+
+```rust
+use query::Query;
+
+fn main() {
+    let html = r#"
+    <div class="a">
+        <p>text 1</p>
+        <p>text 2</p>
+        <p>text 3</p>
+    </div>
+    <div class "b">
+        <p>text 4</p>
+        <p>text 5</p>
+        <p>text 6</p>
+    </div>
+    "#;
+    let q = Query::new(html);
+    let result = q.query(r#"(class a:1:2 | class b:0) > tap p > text @replace," ","""#).texts();
+    println!("{:?}", result); // ["text2", "text3", "text4"]
+}
+
+```
+
 ### Basic Selectors
 
 | Selector   | Syntax                | Description                                |
@@ -86,3 +111,4 @@ Complex set operations can be grouped with parentheses:
 ```
 (((class a ^ class c) | class b) > tag a | class main > tag a) > text @trim
 ```
+
