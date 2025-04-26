@@ -1,5 +1,7 @@
 # HTML Selector
 
+[DOCS](https://docs.rs/htmls/0.1.4/htmls/)
+
 An HTML content extraction tool similar to CSS selectors that can precisely extract and process the required content from HTML documents through a simple and intuitive query language.
 
 ### Example
