@@ -1,6 +1,6 @@
 [package]
 name = "htmls"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "This is a library for parsing HTML."
 license = "Apache-2.0"
@@ -17,6 +17,5 @@ crate-type = ["lib"]
 
 [dependencies]
 html5ever = "0.27.0"
-logos = "0.15.0"
 markup5ever_rcdom = "0.3.0"
 regex = "1.11.1"
