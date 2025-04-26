@@ -14,14 +14,14 @@ fn main() {
         <p>text 2</p>
         <p>text 3</p>
     </div>
-    <div class "b">
+    <div class="b">
         <p>text 4</p>
         <p>text 5</p>
         <p>text 6</p>
     </div>
     "#;
     let q = Query::new(html);
-    let result = q.query(r#"(class a:1:2 | class b:0) > tap p > text @replace," ","""#).texts();
+    let result = q.query(r#"(class a > tag p:1:2 | class b > tag p:0) > text @replace," ","""#).texts();
     println!("{:?}", result); // ["text2", "text3", "text4"]
 }
 
