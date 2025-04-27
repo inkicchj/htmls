@@ -128,7 +128,7 @@ Complex set operations can be grouped with parentheses:
 
 ### Update History
 
-**0.1.5 (2025.04.27)**
+**0.1.5 (2025.04.28)**
 
 1. Added the `#` operator for selecting attribute text values.
 
