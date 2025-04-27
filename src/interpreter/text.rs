@@ -11,6 +11,7 @@ pub fn apply_text_selector(it: &mut Interpreter, text_node: &TextNode) -> Interp
         TextNode::Text => extract_text_content(&nodes)?,
         TextNode::Href => extract_href_values(&nodes)?,
         TextNode::Src => extract_src_values(&nodes)?,
+        TextNode::AttrValue(name, is_regex) => extract_attr_values(&nodes, name, *is_regex)?,
     };
 
     it.result = SelectionResult::with_texts(result);
@@ -63,6 +64,27 @@ fn extract_src_values(nodes: &Vec<NodeHandle>) -> InterpreterResult<Vec<String>>
 
     for node in nodes {
         match html::get_src(node) {
+            Ok(Some(src)) => src_values.push(src),
+            Ok(None) => {} // Node has no src attribute, skip
+            Err(err) => {
+                return Err(InterpreterError::AttributeExtractionError(format!(
+                    "Unable to extract src attribute: {}",
+                    err
+                )));
+            }
+        }
+    }
+
+    Ok(src_values)
+}
+
+
+/// Extract attribute values from nodes
+fn extract_attr_values(nodes: &Vec<NodeHandle>, name: &str, is_regex: bool) -> InterpreterResult<Vec<String>> {
+    let mut src_values = Vec::new();
+
+    for node in nodes {
+        match html::get_attribute(node, name, is_regex){
             Ok(Some(src)) => src_values.push(src),
             Ok(None) => {} // Node has no src attribute, skip
             Err(err) => {

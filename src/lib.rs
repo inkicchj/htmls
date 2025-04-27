@@ -1,6 +1,6 @@
-mod lexer;
-mod parser;
-mod interpreter;
+pub mod lexer;
+pub mod parser;
+pub mod interpreter;
 pub mod query;
 
 use lexer::*;

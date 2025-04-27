@@ -21,7 +21,7 @@ pub fn parse_basic(it: &mut Parser) -> Result<Node, ParseError> {
 
             parse_index(it, node)
         }
-        Some((Token::Text, _, _)) | Some((Token::Href, _, _)) | Some((Token::Src, _, _)) => {
+        Some((Token::Text, _, _)) | Some((Token::Href, _, _)) | Some((Token::Src, _, _)) | Some((Token::Pound, _, _)) => {
             let selector = parse_text(it)?;
             let node = Node::Selector(Box::new(selector));
 

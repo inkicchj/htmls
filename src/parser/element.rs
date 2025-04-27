@@ -101,8 +101,8 @@ fn parse_attr_selector(it: &mut Parser) -> Result<ElementNode, ParseError> {
 
 /// Parse selector value
 fn parse_selector_value(it: &mut Parser) -> Result<(bool, String), ParseError> {
-    let is_regex = if it.check_token(&Token::Regex) {
-        it.read_token(); // Consume regex token
+    let is_regex = if it.check_token(&Token::Tilde) {
+        it.consume_token(&Token::Tilde)?; // Consume regex token
         true
     } else {
         false
@@ -110,12 +110,7 @@ fn parse_selector_value(it: &mut Parser) -> Result<(bool, String), ParseError> {
 
     // Parse selector value (common argument or quoted argument)
     match &it.current_token {
-        Some((Token::Argument(value), _, _)) => {
-            let value = value.clone();
-            it.read_token(); // Consume argument
-            Ok((is_regex, value))
-        }
-        Some((Token::QuotedArgument(value), _, _)) => {
+        Some((Token::String(value), _, _)) => {
             let value = value.clone();
             it.read_token(); // Consume argument
             Ok((is_regex, value))

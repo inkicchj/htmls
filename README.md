@@ -46,6 +46,7 @@ fn main() {
 | Text Content | `text`               | Extract the text content of elements        |
 | Link Address | `href`               | Extract the href attribute value of elements |
 | Image Address | `src`               | Extract the src attribute value of elements  |
+| Attribute text value | `#"attributeName"` | Extract the value of a specific attribute |
 
 ### Pipeline Operations
 
@@ -93,6 +94,17 @@ Using the `@` symbol can invoke built-in text processing functions:
 | contains   | `text @contains,A`         | Get the string containing a certain substring  |
 | starts_with | `text @starts_with,A`     | Get the string whose beginning contains a certain substring |
 | starts_with | `text @ends_with,A`       | Get the string whose ending contains a certain substring |
+| in | `text @in,[A,B,C ]` | Get the string in the list |
+
+**Function Parameter Types**
+
+| type | literal |
+|------|---------|
+| int  | `1 \| -1`  |
+| float | `1.1 \| -1.1` |
+| bool | `true \| false` |
+| str  | `hello \| "hello"` |
+| list | `[1,2,3 ] \| [a, "b"] \| [1.1, 1.2 ]`
 
 Multiple functions can be chained:
 
@@ -114,3 +126,22 @@ Complex set operations can be grouped with parentheses:
 (((class a ^ class c) | class b) > tag a | class main > tag a) > text @trim
 ```
 
+### Update History
+
+**0.1.5 (2025.04.27)**
+
+1. Added the `#` operator for selecting attribute text values.
+
+    `class main > tag a > #target (or #~".*rget")`
+
+2. Added parsing of function parameters for `int`, `float`, `bool`, `str` and `list` types.
+    
+    > Note: The current function only accepts parameters of type `str` and `list<str>`.
+
+    > Note: There must be a space between the last value in the list and the right square bracket; otherwise, a parsing error will occur. For example: `[1, 2 ]`.
+
+3. Add a new function `in`.
+
+    `@in,["text1", text2 ]`
+
+    

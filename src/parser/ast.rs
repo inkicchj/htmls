@@ -56,6 +56,9 @@ pub enum TextNode {
     
     /// src attribute value
     Src,
+
+    /// attribute value
+    AttrValue(String, bool),
 }
 
 
@@ -92,7 +95,33 @@ pub struct FunctionNode {
     pub name: String,
     
     /// Function parameter list
-    pub arguments: Vec<String>,
+    pub arguments: Vec<Literal>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum  Literal {
+    Int(i64),
+    Str(String),
+    Float(f64),
+    Bool(bool),
+    List(Vec<Literal>),
+}
+
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Literal::Int(n) => write!(f, "{}", n),
+            Literal::Str(n) => write!(f, "{}", n),
+            Literal::Float(n) => write!(f, "{}", n),
+            Literal::Bool(n) => write!(f, "{}", n),
+            Literal::List(list) => {
+                for n in list {
+                    write!(f, "{}", n)?;
+                };
+                Ok(())
+            }
+        }
+    }
 }
 
 // Implementing the Display trait for debugging and error reporting
@@ -166,6 +195,13 @@ impl fmt::Display for TextNode {
             TextNode::Text => write!(f, "text"),
             TextNode::Href => write!(f, "href"),
             TextNode::Src => write!(f, "src"),
+            TextNode::AttrValue(name, is_regex) => {
+                if *is_regex {
+                    write!(f, "#~{}", name)
+                } else {
+                    write!(f, "#{}", name)
+                }
+            }
         }
     }
 }
@@ -205,7 +241,11 @@ impl fmt::Display for FunctionNode {
         if self.arguments.is_empty() {
             write!(f, "{}", self.name)
         } else {
-            write!(f, "{},{}", self.name, self.arguments.join(","))
+            write!(f, "{}", self.name)?;
+            for arg in self.arguments.iter() {
+                write!(f, ",{}", arg)?;
+            }
+            Ok(())
         }
     }
 }

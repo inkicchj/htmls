@@ -10,6 +10,7 @@ pub mod set;
 pub mod text;
 pub mod validate;
 pub mod basic;
+pub mod literal;
 
 use validate::SyntaxValidator;
 

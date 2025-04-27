@@ -15,7 +15,6 @@ use std::default::Default;
 
 /// Parse HTML document and return document root node
 pub fn parse_html(html: &str) -> InterpreterResult<NodeHandle> {
-  
     let opts = ParseOpts {
         tree_builder: TreeBuilderOpts {
             drop_doctype: true,
@@ -24,12 +23,10 @@ pub fn parse_html(html: &str) -> InterpreterResult<NodeHandle> {
         ..Default::default()
     };
 
-
     let dom = parse_document(RcDom::default(), opts)
         .from_utf8()
         .read_from(&mut html.as_bytes())
         .map_err(|e| InterpreterError::html_parse_error(&format!("HTML parsing error: {:?}", e)))?;
-
 
     let document = dom.document;
 
@@ -38,9 +35,9 @@ pub fn parse_html(html: &str) -> InterpreterResult<NodeHandle> {
 
 /// Get child nodes from node handle
 pub fn get_children(node: &NodeHandle) -> InterpreterResult<Vec<NodeHandle>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     // Get child nodes
     let children = handle.children.borrow();
@@ -54,12 +51,11 @@ pub fn get_children(node: &NodeHandle) -> InterpreterResult<Vec<NodeHandle>> {
     Ok(result)
 }
 
-
 /// Extract text content from node
 pub fn extract_text(node: &NodeHandle) -> InterpreterResult<String> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     // If it's a text node, return text content directly
     if let NodeData::Text { contents } = &handle.data {
@@ -89,9 +85,9 @@ pub fn find_by_tag(
     tag_name: &str,
     is_regex: bool,
 ) -> InterpreterResult<Vec<NodeHandle>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     let mut result = Vec::new();
 
@@ -130,9 +126,9 @@ pub fn find_by_class(
     class_name: &str,
     is_regex: bool,
 ) -> InterpreterResult<Vec<NodeHandle>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     let mut result = Vec::new();
 
@@ -181,9 +177,9 @@ pub fn find_by_id(
     id_value: &str,
     is_regex: bool,
 ) -> InterpreterResult<Vec<NodeHandle>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     let mut result = Vec::new();
 
@@ -229,9 +225,9 @@ pub fn find_by_attr(
     attr_value: Option<&str>,
     is_regex: bool,
 ) -> InterpreterResult<Vec<NodeHandle>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     let mut result = Vec::new();
 
@@ -299,10 +295,14 @@ pub fn find_by_attr(
 }
 
 /// Get element attribute value
-pub fn get_attribute(node: &NodeHandle, attr_name: &str) -> InterpreterResult<Option<String>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+pub fn get_attribute(
+    node: &NodeHandle,
+    attr_name: &str,
+    is_regex: bool,
+) -> InterpreterResult<Option<String>> {
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     // If not an element node, return None
     if !node.is_element() {
@@ -313,7 +313,22 @@ pub fn get_attribute(node: &NodeHandle, attr_name: &str) -> InterpreterResult<Op
         let attributes = attrs.borrow();
 
         for attr in attributes.iter() {
-            if attr.name.local.to_string() == attr_name {
+            let current_name = attr.name.local.to_string();
+
+            let name_match = if is_regex {
+                match regex::Regex::new(attr_name) {
+                    Ok(re) => re.is_match(&current_name),
+                    Err(e) => {
+                        return Err(InterpreterError::execution_error(&format!(
+                            "Invalid regex pattern: {}",
+                            e
+                        )));
+                    }
+                }
+            } else {
+                current_name == attr_name
+            };
+            if name_match {
                 return Ok(Some(attr.value.to_string()));
             }
         }
@@ -324,19 +339,19 @@ pub fn get_attribute(node: &NodeHandle, attr_name: &str) -> InterpreterResult<Op
 
 /// Get href attribute value
 pub fn get_href(node: &NodeHandle) -> InterpreterResult<Option<String>> {
-    get_attribute(node, "href")
+    get_attribute(node, "href", false)
 }
 
 /// Get src attribute value
 pub fn get_src(node: &NodeHandle) -> InterpreterResult<Option<String>> {
-    get_attribute(node, "src")
+    get_attribute(node, "src", false)
 }
 
 /// Get all node attributes
 pub fn get_all_attributes(node: &NodeHandle) -> InterpreterResult<HashMap<String, String>> {
-    let handle = node
-        .handle()
-        .ok_or_else(|| InterpreterError::execution_error("Node does not have a valid HTML reference"))?;
+    let handle = node.handle().ok_or_else(|| {
+        InterpreterError::execution_error("Node does not have a valid HTML reference")
+    })?;
 
     let mut result = HashMap::new();
 

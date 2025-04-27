@@ -17,33 +17,46 @@ pub enum Token {
     Text, // text
     Src,  // src
     Href, // href
+    // attribute value text selection: #
+    Pound,
 
     // function call
     Function(String), // @name
     // function parameter separator
     Comma, // ,
+    
+    // :
+    Colon,
 
-    // list element selection
-    Colon,         // : 
+    // literal
+    String(String),
+    Float(f64),
     Number(usize),
+    Bool(bool),
+    // .
+    Dot,
+    // -
+    Minus,
+    
+    // ~
+    Tilde,
 
-    // selector argument
-    Argument(String), // common argument
-    QuotedArgument(String), // "quoted argument"
+    // (
+    LeftParen,
+    // )
+    RightParen,
 
-    // regular expression Ssymbol
-    Regex, // ~
+    // [
+    LeftBracket,
+    // ]
+    RightBracket,
 
-
-    LeftParen,  // (
-    RightParen, // )
-
-    // union operator
-    Union, // |
-    // intersection operator
-    Intersection, // &
-    // difference operator
-    Difference, // ^
+    // |
+    Union,
+    // &
+    Intersection,
+    // ^
+    Difference,
 
     EOF,
 }
@@ -59,19 +72,25 @@ impl fmt::Display for Token {
             Token::Text => write!(f, "text"),
             Token::Src => write!(f, "src"),
             Token::Href => write!(f, "href"),
-            Token::Argument(arg) => write!(f, "{}", arg),
-            Token::QuotedArgument(arg) => write!(f, "\"{}\"", arg),
-            Token::Regex => write!(f, "~"),
+            Token::Tilde => write!(f, "~"),
             Token::Function(func) => write!(f, "@{}", func),
             Token::Comma => write!(f, ","),
             Token::Colon => write!(f, ":"),
             Token::Number(n) => write!(f, "{}", n),
+            Token::String(s) => write!(f, "{}", s),
+            Token::Float(n) => write!(f, "{}", n),
+            Token::Bool(b) => write!(f, "{}", b),
+            Token::Minus => write!(f, "-"),
             Token::LeftParen => write!(f, "("),
             Token::RightParen => write!(f, ")"),
+            Token::LeftBracket => write!(f, "["),
+            Token::RightBracket => write!(f, "]"),
             Token::Union => write!(f, "|"),
             Token::Intersection => write!(f, "&"),
             Token::Difference => write!(f, "^"),
+            Token::Dot => write!(f, "."),
             Token::EOF => write!(f, "EOF"),
+            Token::Pound => write!(f, "#"),
         }
     }
 }
@@ -233,7 +252,7 @@ impl Lexer {
             '"' => self.read_quoted_string(),
             '~' => {
                 self.read_char();
-                Ok(Token::Regex)
+                Ok(Token::Tilde)
             }
             '(' => {
                 self.read_char();
@@ -243,18 +262,51 @@ impl Lexer {
                 self.read_char();
                 Ok(Token::RightParen)
             }
+            '[' => {
+                self.read_char();
+                Ok(Token::LeftBracket)
+            }
+            ']' => {
+                self.read_char();
+                Ok(Token::RightBracket)
+            }
+            '.' => {
+                self.read_char();
+                Ok(Token::Dot)
+            }
+            '-' => {
+                self.read_char();
+                Ok(Token::Minus)
+            }
             '0'..='9' => self.read_number(),
-            _ => self.read_argument(),
+            '#' => {
+                self.read_char();
+                Ok(Token::Pound)
+            }
+            _ => self.read_string(),
         }
     }
 
     /// Read numbers.
     fn read_number(&mut self) -> Result<Token, LexerError> {
         let start_position = self.position;
+        
+
+        let mut has_dot = false;
 
         while let Some(c) = self.current_char {
             if c.is_ascii_digit() {
                 self.read_char();
+            } else if c == '.' {
+                has_dot = true;
+                self.read_char();
+                while let Some(c1) = self.current_char {
+                    if c1.is_ascii_digit() {
+                        self.read_char();
+                    } else {
+                        break;
+                    }
+                }
             } else {
                 break;
             }
@@ -262,14 +314,26 @@ impl Lexer {
 
         let number_str: String = self.chars[start_position..self.position].iter().collect();
 
-        match number_str.parse::<usize>() {
-            Ok(number) => Ok(Token::Number(number)),
-            Err(_) => Err(LexerError {
-                message: format!("Unable to resolve the number: {}", number_str),
-                line: self.line,
-                column: self.column,
-            }),
+        if has_dot {
+            match number_str.parse::<f64>() {
+                Ok(float) => Ok(Token::Float(float)),
+                Err(_) => Err(LexerError {
+                    message: format!("Unable to resolve the float: {}", number_str),
+                    line: self.line,
+                    column: self.column,
+                }),
+            }
+        } else {
+            match number_str.parse::<usize>() {
+                Ok(number) => Ok(Token::Number(number)),
+                Err(_) => Err(LexerError {
+                    message: format!("Unable to resolve the number: {}", number_str),
+                    line: self.line,
+                    column: self.column,
+                }),
+            }
         }
+
     }
 
     /// Read identifiers (keywords such as class, id, etc.)
@@ -411,7 +475,7 @@ impl Lexer {
                 self.read_char();
             } else if c == '"' {
                 self.read_char();
-                return Ok(Token::QuotedArgument(value));
+                return Ok(Token::String(value));
             } else {
                 value.push(c);
                 self.read_char();
@@ -426,7 +490,7 @@ impl Lexer {
     }
 
     /// Read normal parameters
-    fn read_argument(&mut self) -> Result<Token, LexerError> {
+    fn read_string(&mut self) -> Result<Token, LexerError> {
         let start_position = self.position;
 
         while let Some(c) = self.current_char {
@@ -455,7 +519,9 @@ impl Lexer {
             "text" => Ok(Token::Text),
             "src" => Ok(Token::Src),
             "href" => Ok(Token::Href),
-            _ => Ok(Token::Argument(argument))
+            "true" => Ok(Token::Bool(true)),
+            "false" => Ok(Token::Bool(false)),
+            _ => Ok(Token::String(argument))
         }
     }
 
@@ -486,9 +552,10 @@ pub fn tokenize(input: &str) -> Vec<(Token, usize, usize)> {
                 break;
             }
             Ok(token) => tokens_with_pos.push((token, line, column)),
-            Err(_) => lexer.recover_from_error(),
+            Err(e) => {
+                println!("{:?}", e); 
+                lexer.recover_from_error() },
         }
     }
-
     tokens_with_pos
 }

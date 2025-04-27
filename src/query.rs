@@ -17,7 +17,6 @@ pub struct Query {
 }
 
 impl Query {
-    
     pub fn new(html: &str) -> Self {
         match Interpreter::new(html) {
             Ok(it) => Query {
