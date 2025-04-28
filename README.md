@@ -95,6 +95,7 @@ Using the `@` symbol can invoke built-in text processing functions:
 | starts_with | `text @starts_with,A`     | Get the string whose beginning contains a certain substring |
 | starts_with | `text @ends_with,A`       | Get the string whose ending contains a certain substring |
 | in | `text @in,[A,B,C ]` | Get the string in the list |
+| slice | `text @slice,1,nil` | String slicing |
 
 **Function Parameter Types**
 
@@ -104,7 +105,7 @@ Using the `@` symbol can invoke built-in text processing functions:
 | float | `1.1 \| -1.1` |
 | bool | `true \| false` |
 | str  | `hello \| "hello"` |
-| list | `[1,2,3 ] \| [a, "b"] \| [1.1, 1.2 ]`
+| list | `[1,2,3]` \|  `[a, "b"]` \| `[1.1, 1.2]` |
 
 Multiple functions can be chained:
 
@@ -128,7 +129,15 @@ Complex set operations can be grouped with parentheses:
 
 ### Update History
 
-**0.1.6 (2025.04.28)**
+**0.1.8 (2025.04.29)**
+
+1. Optimized the lexical analysis of float literal.
+
+2. Added a new `slice` function for string slicing.
+
+    `@slice,1,5`. When the parameter is `nil`, `@slice,nil,5` is equivalent to `@slice,0,5`, and `@slice,0,nil` is equivalent to `@slice,0,(str.len())`.
+
+**0.1.7 (2025.04.28)**
 
 1. Improved the index selection feature, which now allows for:
 
@@ -147,10 +156,8 @@ Complex set operations can be grouped with parentheses:
     `class main > tag a > #target (or #~".*rget")`
 
 2. Added parsing of function parameters for `int`, `float`, `bool`, `str` and `list` types.
-    
-    > Note: The current function only accepts parameters of type `str` and `list<str>`.
 
-    > Note: There must be a space between the last value in the list and the right square bracket; otherwise, a parsing error will occur. For example: `[1, 2 ]`.
+    > Note: For the `str` type not wrapped in `"`, there must be at least one space between the last value in the list and `]`, for example: `[test1, test2 ]`.
 
 3. Add a new function `in`.
 

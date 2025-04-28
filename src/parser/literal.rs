@@ -77,6 +77,10 @@ pub fn parse_literal(it: &mut Parser) -> Result<Literal, ParseError> {
                 return Err(ParseError::unexpected_token("]", &current, line, column));
             }
         }
+        Some((Token::Nil, _, _)) => {
+            it.read_token();
+            Literal::Nil
+        }
         _ => {
             let (line, column) = it.get_current_position();
             let current = it.get_current_token_str();

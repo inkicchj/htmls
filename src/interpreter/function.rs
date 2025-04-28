@@ -151,6 +151,49 @@ pub fn apply_function(it: &mut Interpreter, node: &FunctionNode) -> InterpreterR
 
             in_(texts, value0);
         }
+        "slice" => {
+            if node.arguments.len() != 2 {
+                return Err(InterpreterError::MissingArgument(
+                    "slice must include 2 argument.".to_string(),
+                ));
+            };
+
+            let st = match &node.arguments[0] {
+                Literal::Int(n) => {
+                    if *n < 0 {
+                        return Err(InterpreterError::InvalidArgument(
+                            "slice's parameter must be greater than or equal to 0.".to_string(),
+                        ));
+                    };
+                    Some(*n as usize)
+                }
+                Literal::Nil => None,
+                _ => {
+                    return Err(InterpreterError::InvalidArgument(
+                        "slice expect a value of type int".to_string(),
+                    ));
+                }
+            };
+
+            let ed = match &node.arguments[1] {
+                Literal::Int(n) => {
+                    if *n < 0 {
+                        return Err(InterpreterError::InvalidArgument(
+                            "slice's parameter must be greater than or equal to 0.".to_string(),
+                        ));
+                    };
+                    Some(*n as usize)
+                }
+                Literal::Nil => None,
+                _ => {
+                    return Err(InterpreterError::InvalidArgument(
+                        "slice expect a value of type int".to_string(),
+                    ));
+                }
+            };
+
+            slice(texts, st, ed);
+        }
         _ => return Err(InterpreterError::UnknownFunction(node.name.clone())),
     };
 
@@ -267,4 +310,27 @@ fn in_(texts: &mut Vec<String>, list: Vec<String>) {
     }
 
     *texts = result;
+}
+
+fn slice(tests: &mut Vec<String>, st: Option<usize>, ed: Option<usize>) {
+    tests.iter_mut().for_each(|text| {
+        let mut st = st.unwrap_or(0);
+        let mut ed = ed.unwrap_or(text.len());
+        if ed > text.len() {
+            ed = text.len();
+        };
+
+        if st > ed {
+            if st > text.len() {
+                st = text.len();
+            }
+            let temp = st;
+            st = ed;
+            ed = temp;
+        }
+
+        if let Some(t) = text.get(st..ed) {
+            *text = t.to_string();
+        }
+    });
 }

@@ -120,7 +120,7 @@ impl fmt::Display for Literal {
                 }
                 Ok(())
             }
-            Literal::Nil => write!(f, ""),
+            Literal::Nil => write!(f, "nil"),
         }
     }
 }

@@ -221,7 +221,5 @@ pub fn parse(input: &str) -> Result<Node, ParseError> {
     let mut validator = SyntaxValidator::new();
     validator.validate(&node)?;
 
-    println!("{:?}", node);
-
     Ok(node)
 }

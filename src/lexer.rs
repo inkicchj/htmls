@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     // pipe operator
@@ -24,7 +23,7 @@ pub enum Token {
     Function(String), // @name
     // function parameter separator
     Comma, // ,
-    
+
     // :
     Colon,
 
@@ -33,6 +32,7 @@ pub enum Token {
     Float(f64),
     Number(usize),
     Bool(bool),
+    Nil,
     // .
     Dot,
     // ..
@@ -40,7 +40,7 @@ pub enum Token {
 
     // -
     Minus,
-    
+
     // ~
     Tilde,
 
@@ -93,12 +93,12 @@ impl fmt::Display for Token {
             Token::Difference => write!(f, "^"),
             Token::Dot => write!(f, "."),
             Token::DotDot => write!(f, ".."),
+            Token::Nil => write!(f, "nil"),
             Token::EOF => write!(f, "EOF"),
             Token::Pound => write!(f, "#"),
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct LexerError {
@@ -132,13 +132,11 @@ pub struct Lexer {
     // current line number
     line: usize,
     // current column number
-    column: usize, 
+    column: usize,
 }
 
 impl Lexer {
-
     pub fn new(input: &str) -> Self {
-
         let estimated_capacity = input.len() + 1;
         let mut chars = Vec::with_capacity(estimated_capacity);
         chars.extend(input.chars());
@@ -198,14 +196,14 @@ impl Lexer {
 
     /// Determine whether it is a supported Unicode identifier character.
     fn is_unicode_identifier_part(c: char) -> bool {
-        (c >= '\u{4E00}' && c <= '\u{9FFF}') ||
-        (c >= '\u{3040}' && c <= '\u{309F}') ||
-        (c >= '\u{30A0}' && c <= '\u{30FF}') ||
-        (c >= '\u{AC00}' && c <= '\u{D7AF}') ||
-        (c >= '\u{1F600}' && c <= '\u{1F64F}') ||
-        (c >= '\u{1F300}' && c <= '\u{1F5FF}') ||
-        (c >= '\u{1F680}' && c <= '\u{1F6FF}') ||
-        (c >= '\u{2600}' && c <= '\u{26FF}')
+        (c >= '\u{4E00}' && c <= '\u{9FFF}')
+            || (c >= '\u{3040}' && c <= '\u{309F}')
+            || (c >= '\u{30A0}' && c <= '\u{30FF}')
+            || (c >= '\u{AC00}' && c <= '\u{D7AF}')
+            || (c >= '\u{1F600}' && c <= '\u{1F64F}')
+            || (c >= '\u{1F300}' && c <= '\u{1F5FF}')
+            || (c >= '\u{1F680}' && c <= '\u{1F6FF}')
+            || (c >= '\u{2600}' && c <= '\u{26FF}')
     }
 
     /// Determine if a character is a valid starting character for a function name.
@@ -220,7 +218,6 @@ impl Lexer {
 
     /// Get the next token.
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-
         self.skip_whitespace();
 
         if self.current_char.is_none() {
@@ -275,19 +272,18 @@ impl Lexer {
                 Ok(Token::RightBracket)
             }
             '.' => {
-                self.read_char();
-                if self.chars[self.read_position] == '.' {
-                    self.read_char();
-                    Ok(Token::DotDot)
+                if self.chars[self.read_position].is_ascii_digit() {
+                    self.read_number(true)
                 } else {
+                    self.read_char();
                     Ok(Token::Dot)
-                }                
+                }
             }
             '-' => {
                 self.read_char();
                 Ok(Token::Minus)
             }
-            '0'..='9' => self.read_number(),
+            '0'..='9' => self.read_number(false),
             '#' => {
                 self.read_char();
                 Ok(Token::Pound)
@@ -297,23 +293,33 @@ impl Lexer {
     }
 
     /// Read numbers.
-    fn read_number(&mut self) -> Result<Token, LexerError> {
+    fn read_number(&mut self, has_dot: bool) -> Result<Token, LexerError> {
         let start_position = self.position;
-        
 
-        let mut has_dot = false;
+        let mut has_dot_ = has_dot;
+        let mut end = 0;
+
+        if has_dot_ {
+            self.read_char();
+        }
 
         while let Some(c) = self.current_char {
             if c.is_ascii_digit() {
                 self.read_char();
+                end = self.position;
             } else if c == '.' {
-                has_dot = true;
-                self.read_char();
-                while let Some(c1) = self.current_char {
-                    if c1.is_ascii_digit() {
-                        self.read_char();
-                    } else {
-                        break;
+                if !has_dot_ {
+                    has_dot_ = true;
+                    self.read_char();
+                    end = self.position;
+                } else {
+                    self.read_char();
+                    while let Some(c1) = self.current_char {
+                        if c1.is_ascii_digit() {
+                            self.read_char();
+                        } else {
+                            break;
+                        }
                     }
                 }
             } else {
@@ -321,9 +327,8 @@ impl Lexer {
             }
         }
 
-        let number_str: String = self.chars[start_position..self.position].iter().collect();
-
-        if has_dot {
+        if has_dot_ {
+            let number_str: String = self.chars[start_position..end].iter().collect();
             match number_str.parse::<f64>() {
                 Ok(float) => Ok(Token::Float(float)),
                 Err(_) => Err(LexerError {
@@ -333,6 +338,7 @@ impl Lexer {
                 }),
             }
         } else {
+            let number_str: String = self.chars[start_position..self.position].iter().collect();
             match number_str.parse::<usize>() {
                 Ok(number) => Ok(Token::Number(number)),
                 Err(_) => Err(LexerError {
@@ -342,7 +348,6 @@ impl Lexer {
                 }),
             }
         }
-
     }
 
     /// Read identifiers (keywords such as class, id, etc.)
@@ -379,7 +384,6 @@ impl Lexer {
 
     /// Read the function name (the part after @)
     fn read_function(&mut self) -> Result<Token, LexerError> {
-
         self.read_char();
 
         let start_position = self.position;
@@ -415,12 +419,10 @@ impl Lexer {
 
     /// Read a quoted string.
     fn read_quoted_string(&mut self) -> Result<Token, LexerError> {
-   
         self.read_char();
 
         let mut value = String::new();
         let mut escaped = false;
-
 
         while let Some(c) = self.current_char {
             if escaped {
@@ -462,14 +464,20 @@ impl Lexer {
                                 value.push(unicode_char);
                             } else {
                                 return Err(LexerError {
-                                    message: format!("Invalid Unicode code point: U+{}", unicode_value),
+                                    message: format!(
+                                        "Invalid Unicode code point: U+{}",
+                                        unicode_value
+                                    ),
                                     line: self.line,
                                     column: self.column,
                                 });
                             }
                         } else {
                             return Err(LexerError {
-                                message: format!("Unable to resolve Unicode escape sequence: \\u{}", unicode_value),
+                                message: format!(
+                                    "Unable to resolve Unicode escape sequence: \\u{}",
+                                    unicode_value
+                                ),
                                 line: self.line,
                                 column: self.column,
                             });
@@ -530,7 +538,8 @@ impl Lexer {
             "href" => Ok(Token::Href),
             "true" => Ok(Token::Bool(true)),
             "false" => Ok(Token::Bool(false)),
-            _ => Ok(Token::String(argument))
+            "nil" => Ok(Token::Nil),
+            _ => Ok(Token::String(argument)),
         }
     }
 
@@ -543,7 +552,6 @@ impl Lexer {
         }
     }
 }
-
 
 pub fn tokenize(input: &str) -> Vec<(Token, usize, usize)> {
     let mut lexer = Lexer::new(input);
@@ -561,9 +569,7 @@ pub fn tokenize(input: &str) -> Vec<(Token, usize, usize)> {
                 break;
             }
             Ok(token) => tokens_with_pos.push((token, line, column)),
-            Err(e) => {
-                println!("{:?}", e); 
-                lexer.recover_from_error() },
+            Err(_) => lexer.recover_from_error(),
         }
     }
     tokens_with_pos

@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use super::{Interpreter, InterpreterError, InterpreterResult, SelectionResult};
-
-
 /// Provides fluent API interfaces and result caching to simplify queries and operations.
 #[derive(Clone)]
 pub struct Query {
