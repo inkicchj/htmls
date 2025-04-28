@@ -26,6 +26,7 @@ pub fn parse_literal(it: &mut Parser) -> Result<Literal, ParseError> {
         }
         Some((Token::Minus, _, _)) => {
             it.read_token();
+
             match &it.current_token {
                 Some((Token::Number(v), _, _)) => {
                     let v = Literal::Int(-(*v as i64));
@@ -51,6 +52,9 @@ pub fn parse_literal(it: &mut Parser) -> Result<Literal, ParseError> {
         }
         Some((Token::LeftBracket, _, _)) => {
             it.read_token();
+
+            it.check_depth()?;
+
             let mut list: Vec<Literal> = Vec::new();
             let first_value = parse_literal(it)?;
             list.push(first_value);
@@ -63,6 +67,9 @@ pub fn parse_literal(it: &mut Parser) -> Result<Literal, ParseError> {
 
             if let Some((Token::RightBracket, _, _)) = &it.current_token {
                 it.read_token();
+
+                it.decrease_depth();
+
                 Literal::List(list)
             } else {
                 let (line, column) = it.get_current_position();

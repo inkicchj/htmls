@@ -35,6 +35,9 @@ pub enum Token {
     Bool(bool),
     // .
     Dot,
+    // ..
+    DotDot,
+
     // -
     Minus,
     
@@ -89,6 +92,7 @@ impl fmt::Display for Token {
             Token::Intersection => write!(f, "&"),
             Token::Difference => write!(f, "^"),
             Token::Dot => write!(f, "."),
+            Token::DotDot => write!(f, ".."),
             Token::EOF => write!(f, "EOF"),
             Token::Pound => write!(f, "#"),
         }
@@ -272,7 +276,12 @@ impl Lexer {
             }
             '.' => {
                 self.read_char();
-                Ok(Token::Dot)
+                if self.chars[self.read_position] == '.' {
+                    self.read_char();
+                    Ok(Token::DotDot)
+                } else {
+                    Ok(Token::Dot)
+                }                
             }
             '-' => {
                 self.read_char();

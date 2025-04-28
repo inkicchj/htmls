@@ -5,16 +5,16 @@ use std::fmt;
 pub enum Node {
     /// Selector node
     Selector(Box<SelectorNode>),
-    
+
     /// Pipeline operation: left operand > right operand
     Pipeline(Box<Node>, Box<Node>),
-    
+
     /// Set operation node
     SetOperation(Box<SetOperationNode>),
-    
+
     /// Index selection: node with index selector
     IndexSelection(Box<Node>, Box<IndexNode>),
-    
+
     /// Function call: node with function node
     FunctionCall(Box<Node>, FunctionNode),
 }
@@ -24,7 +24,7 @@ pub enum Node {
 pub enum SelectorNode {
     /// Element query selector
     ElementSelector(ElementNode),
-    
+
     /// Text query selector
     TextSelector(TextNode),
 }
@@ -34,13 +34,13 @@ pub enum SelectorNode {
 pub enum ElementNode {
     /// Class selector: parameter, whether it's a regex
     Class(String, bool),
-    
+
     /// ID selector: parameter, whether it's a regex
     Id(String, bool),
-    
+
     /// Tag selector: parameter, whether it's a regex
     Tag(String, bool),
-    
+
     /// Attribute selector: attribute name, attribute value (optional), whether it's a regex
     Attr(String, Option<String>, bool),
 }
@@ -50,10 +50,10 @@ pub enum ElementNode {
 pub enum TextNode {
     /// Element text content
     Text,
-    
+
     /// href attribute value
     Href,
-    
+
     /// src attribute value
     Src,
 
@@ -61,16 +61,15 @@ pub enum TextNode {
     AttrValue(String, bool),
 }
 
-
 /// Set operation node
 #[derive(Debug, Clone, PartialEq)]
 pub enum SetOperationNode {
     /// Union: left operand | right operand
     Union(Box<Node>, Box<Node>),
-    
+
     /// Intersection: left operand & right operand
     Intersection(Box<Node>, Box<Node>),
-    
+
     /// Difference: left operand ^ right operand
     Difference(Box<Node>, Box<Node>),
 }
@@ -79,13 +78,13 @@ pub enum SetOperationNode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IndexNode {
     /// Single index: index value
-    Single(usize),
-    
+    Single(Literal),
+
     /// Multiple indices: list of index values
-    Multiple(Vec<usize>),
-    
+    Multiple(Vec<Literal>),
+
     /// Range index: start value, end value, step (optional)
-    Range(usize, usize, Option<usize>),
+    Range(Option<Literal>, Option<Literal>, Option<Literal>),
 }
 
 /// Function node
@@ -93,18 +92,19 @@ pub enum IndexNode {
 pub struct FunctionNode {
     /// Function name
     pub name: String,
-    
+
     /// Function parameter list
     pub arguments: Vec<Literal>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum  Literal {
+pub enum Literal {
     Int(i64),
     Str(String),
     Float(f64),
     Bool(bool),
     List(Vec<Literal>),
+    Nil,
 }
 
 impl fmt::Display for Literal {
@@ -117,9 +117,10 @@ impl fmt::Display for Literal {
             Literal::List(list) => {
                 for n in list {
                     write!(f, "{}", n)?;
-                };
+                }
                 Ok(())
             }
+            Literal::Nil => write!(f, ""),
         }
     }
 }
@@ -155,21 +156,21 @@ impl fmt::Display for ElementNode {
                 } else {
                     write!(f, "class {}", value)
                 }
-            },
+            }
             ElementNode::Id(value, is_regex) => {
                 if *is_regex {
                     write!(f, "id ~{}", value)
                 } else {
                     write!(f, "id {}", value)
                 }
-            },
+            }
             ElementNode::Tag(value, is_regex) => {
                 if *is_regex {
                     write!(f, "tag ~{}", value)
                 } else {
                     write!(f, "tag {}", value)
                 }
-            },
+            }
             ElementNode::Attr(value, attr_value, is_regex) => {
                 if let Some(attr_value) = attr_value {
                     if *is_regex {
@@ -184,7 +185,7 @@ impl fmt::Display for ElementNode {
                         write!(f, "attr {}", value)
                     }
                 }
-            },
+            }
         }
     }
 }
@@ -206,7 +207,6 @@ impl fmt::Display for TextNode {
     }
 }
 
-
 impl fmt::Display for SetOperationNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -224,14 +224,25 @@ impl fmt::Display for IndexNode {
             IndexNode::Multiple(indices) => {
                 let indices_str: Vec<String> = indices.iter().map(|i| i.to_string()).collect();
                 write!(f, "{}", indices_str.join(","))
-            },
+            }
             IndexNode::Range(start, end, step) => {
                 if let Some(step_val) = step {
-                    write!(f, "{}:{}:{}", start, end, step_val)
+                    write!(
+                        f,
+                        "{}:{}:{}",
+                        start.clone().unwrap_or(Literal::Nil),
+                        end.clone().unwrap_or(Literal::Nil),
+                        step_val
+                    )
                 } else {
-                    write!(f, "{}:{}", start, end)
+                    write!(
+                        f,
+                        "{}:{}",
+                        start.clone().unwrap_or(Literal::Nil),
+                        end.clone().unwrap_or(Literal::Nil)
+                    )
                 }
-            },
+            }
         }
     }
 }
@@ -271,4 +282,4 @@ impl Visitable for Node {
     fn accept<T>(&self, visitor: &mut dyn Visitor<T>) -> T {
         visitor.visit_node(self)
     }
-} 
+}

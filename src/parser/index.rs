@@ -1,7 +1,7 @@
+use super::{Parser, literal};
 use crate::lexer::Token;
 use crate::parser::ast::{IndexNode, Node};
 use crate::parser::error::ParseError;
-use super::Parser;
 
 /// 解析索引选择
 pub fn parse_index(it: &mut Parser, mut node: Node) -> Result<Node, ParseError> {
@@ -14,8 +14,7 @@ pub fn parse_index(it: &mut Parser, mut node: Node) -> Result<Node, ParseError> 
 
 /// 解析索引选择器
 pub fn parse_index_selector(it: &mut Parser, node: Node) -> Result<Node, ParseError> {
-
-    if !matches!(&it.current_token, Some((Token::Colon, _, _))) {
+    if !it.check_token(&Token::Colon) {
         let (line, column) = it.get_current_position();
         let current = it.get_current_token_str();
         return Err(ParseError::unexpected_token(":", &current, line, column));
@@ -25,66 +24,71 @@ pub fn parse_index_selector(it: &mut Parser, node: Node) -> Result<Node, ParseEr
 
     it.check_depth()?;
 
-    let first_index = parse_single_index(it)?;
-
     let index_node = match &it.current_token {
-        // If it is a colon, it is a range index (:m:n[:s]).
         Some((Token::Colon, _, _)) => {
-            it.consume_token(&Token::Colon)?;
-            let end_index = parse_single_index(it)?;
-
-            let step = if let Some((Token::Colon, _, _)) = &it.current_token {
-                it.consume_token(&Token::Colon)?;
-
-                let step = parse_single_index(it)?;
-                Some(step)
-            } else {
+            it.read_token();
+            let end_index = if let Some((Token::Colon, _, _)) = &it.current_token {
+                it.read_token();
                 None
+            } else {
+                Some(literal::parse_literal(it)?)
             };
 
-            IndexNode::Range(first_index, end_index, step)
+            let step_value = if let Some((Token::Colon, _, _)) = &it.current_token {
+                it.read_token();
+                Some(literal::parse_literal(it)?)
+            } else {
+                match literal::parse_literal(it) {
+                    Ok(step) => Some(step),
+                    Err(_) => None,
+                }
+            };
+
+            IndexNode::Range(None, end_index, step_value)
         }
+        _ => {
+            let start_index = literal::parse_literal(it)?;
+            match &it.current_token {
+                Some((Token::Colon, _, _)) => {
+                    it.read_token();
+                    let end_index = if let Some((Token::Colon, _, _)) = &it.current_token {
+                        it.read_token();
+                        None
+                    } else {
+                        Some(literal::parse_literal(it)?)
+                    };
 
-        // If it is a comma, then it represents multiple indices (:m,n,p).
-        Some((Token::Comma, _, _)) => {
-            let mut indices = vec![first_index];
-           
-            while let Some((Token::Comma, _, _)) = &it.current_token {
+                    let step_value = if let Some((Token::Colon, _, _)) = &it.current_token {
+                        it.read_token();
+                        Some(literal::parse_literal(it)?)
+                    } else {
+                        match literal::parse_literal(it) {
+                            Ok(step) => Some(step),
+                            Err(_) => None,
+                        }
+                    };
 
-                it.consume_token(&Token::Comma)?;
-                
-                let next_index = parse_single_index(it)?;
-                indices.push(next_index);
+                    IndexNode::Range(Some(start_index), end_index, step_value)
+                }
+                Some((Token::Comma, _, _)) => {
+                    it.read_token();
+
+                    let mut indexs = vec![start_index];
+
+                    while let Some((Token::Comma, _, _)) = &it.current_token {
+                        it.read_token();
+                        let index = literal::parse_literal(it)?;
+                        indexs.push(index);
+                    }
+
+                    IndexNode::Multiple(indexs)
+                }
+                _ => IndexNode::Single(start_index),
             }
-
-            IndexNode::Multiple(indices)
         }
-        _ => IndexNode::Single(first_index),
     };
-
 
     it.decrease_depth();
 
     Ok(Node::IndexSelection(Box::new(node), Box::new(index_node)))
-}
-
-/// Parse a single index value
-fn parse_single_index(it: &mut Parser) -> Result<usize, ParseError> {
-    match &it.current_token {
-        Some((Token::Number(number), _, _)) => {
-            let value = *number;
-            it.read_token();
-            Ok(value)
-        }
-        _ => {
-            let (line, column) = it.get_current_position();
-            let current = it.get_current_token_str();
-            Err(ParseError::unexpected_token(
-                "number",
-                &current,
-                line,
-                column,
-            ))
-        }
-    }
 }

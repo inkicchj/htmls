@@ -2,32 +2,62 @@ use super::Interpreter;
 use super::error::{InterpreterError, InterpreterResult};
 use super::result::SelectionResult;
 use crate::parser::IndexNode;
-
+use crate::parser::ast::Literal;
 
 pub fn apply_index_selection(it: &mut Interpreter, index: &IndexNode) -> InterpreterResult<()> {
     match index {
-        IndexNode::Single(idx) => apply_single_index(it, *idx),
+        IndexNode::Single(idx) => apply_single_index(it, idx),
         IndexNode::Multiple(indices) => apply_multiple_indices(it, indices),
-        IndexNode::Range(start, end, step) => apply_range_indices(it, *start, *end, *step),
+        IndexNode::Range(start, end, step) => apply_range_indices(it, start, end, step),
     }
 }
 
-fn apply_single_index(it: &mut Interpreter, index: usize) -> InterpreterResult<()> {
+fn apply_single_index(it: &mut Interpreter, index: &Literal) -> InterpreterResult<()> {
     it.result = match &it.result {
         SelectionResult::Nodes(nodes) => {
-            if index >= nodes.len() {
-                return Err(InterpreterError::IndexOutOfBounds(index, nodes.len()));
-            }
+            let idx = match index {
+                Literal::Int(n) => {
+                    let n = *n;
+                    let len = nodes.len() as i64;
+                    if n >= 0 && n < len {
+                        n
+                    } else if n < 0 && -(n) <= len {
+                        n + len
+                    } else {
+                        return Err(InterpreterError::IndexOutOfBounds(n as usize, nodes.len()));
+                    }
+                }
+                _ => {
+                    return Err(InterpreterError::InvalidArgument(
+                        "index selection expects a value of type int.".to_string(),
+                    ));
+                }
+            };
 
-            let selected_node = nodes[index].clone();
+            let selected_node = nodes[idx as usize].clone();
             SelectionResult::with_nodes(vec![selected_node])
         }
         SelectionResult::Texts(texts) => {
-            if index >= texts.len() {
-                return Err(InterpreterError::IndexOutOfBounds(index, texts.len()));
-            }
+            let idx = match index {
+                Literal::Int(n) => {
+                    let n = *n;
+                    let len = texts.len() as i64;
+                    if n >= 0 && n < len {
+                        n
+                    } else if n < 0 && -(n) <= len {
+                        n + len
+                    } else {
+                        return Err(InterpreterError::IndexOutOfBounds(n as usize, texts.len()));
+                    }
+                }
+                _ => {
+                    return Err(InterpreterError::InvalidArgument(
+                        "index selection expects a value of type int.".to_string(),
+                    ));
+                }
+            };
 
-            let selected_text = texts[index].clone();
+            let selected_text = texts[idx as usize].clone();
             SelectionResult::with_texts(vec![selected_text])
         }
     };
@@ -35,16 +65,34 @@ fn apply_single_index(it: &mut Interpreter, index: usize) -> InterpreterResult<(
     Ok(())
 }
 
-fn apply_multiple_indices(it: &mut Interpreter, indices: &[usize]) -> InterpreterResult<()> {
+fn apply_multiple_indices(it: &mut Interpreter, indices: &Vec<Literal>) -> InterpreterResult<()> {
     it.result = match &it.result {
         SelectionResult::Nodes(nodes) => {
             let mut selected_nodes = Vec::with_capacity(indices.len());
 
-            for &idx in indices {
-                if idx >= nodes.len() {
-                    return Err(InterpreterError::IndexOutOfBounds(idx, nodes.len()));
-                }
-                selected_nodes.push(nodes[idx].clone());
+            for index in indices {
+                let idx = match index {
+                    Literal::Int(n) => {
+                        let n = *n;
+                        let len = nodes.len() as i64;
+                        if n >= 0 && n < len {
+                            n
+                        } else if n < 0 && -(n) <= len {
+                            n + len
+                        } else {
+                            return Err(InterpreterError::IndexOutOfBounds(
+                                n as usize,
+                                nodes.len(),
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(InterpreterError::InvalidArgument(
+                            "index selection expects a value of type int.".to_string(),
+                        ));
+                    }
+                };
+                selected_nodes.push(nodes[idx as usize].clone());
             }
 
             SelectionResult::with_nodes(selected_nodes)
@@ -52,11 +100,29 @@ fn apply_multiple_indices(it: &mut Interpreter, indices: &[usize]) -> Interprete
         SelectionResult::Texts(texts) => {
             let mut selected_texts = Vec::with_capacity(indices.len());
 
-            for &idx in indices {
-                if idx >= texts.len() {
-                    return Err(InterpreterError::IndexOutOfBounds(idx, texts.len()));
-                }
-                selected_texts.push(texts[idx].clone());
+            for index in indices {
+                let idx = match index {
+                    Literal::Int(n) => {
+                        let n = *n;
+                        let len = texts.len() as i64;
+                        if n >= 0 && n < len {
+                            n
+                        } else if n < 0 && -(n) <= len {
+                            n + len
+                        } else {
+                            return Err(InterpreterError::IndexOutOfBounds(
+                                n as usize,
+                                texts.len(),
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(InterpreterError::InvalidArgument(
+                            "index selection expects a value of type int.".to_string(),
+                        ));
+                    }
+                };
+                selected_texts.push(texts[idx as usize].clone());
             }
 
             SelectionResult::with_texts(selected_texts)
@@ -67,16 +133,95 @@ fn apply_multiple_indices(it: &mut Interpreter, indices: &[usize]) -> Interprete
 
 fn apply_range_indices(
     it: &mut Interpreter,
-    start: usize,
-    end: usize,
-    step: Option<usize>,
+    start: &Option<Literal>,
+    end: &Option<Literal>,
+    step: &Option<Literal>,
 ) -> InterpreterResult<()> {
-    let step_value = step.unwrap_or(1);
-    if step_value == 0 {
-        return Err(InterpreterError::InvalidStep(step_value));
-    }
-    let indices: Vec<usize> = (start..=end).step_by(step_value).collect();
+    let len = match &it.result {
+        SelectionResult::Nodes(nodes) => nodes.len(),
+        SelectionResult::Texts(texts) => texts.len(),
+    } as i64;
 
-    // Reuse the logic of multi-index selection
+    let start_index = match start {
+        Some(v) => match v {
+            Literal::Int(n) => {
+                let n = *n;
+                if n >= 0 && n < len {
+                    Some(n as usize)
+                } else if n < 0 && -(n) <= len {
+                    Some((n + len) as usize)
+                } else {
+                    return Err(InterpreterError::IndexOutOfBounds(n as usize, len as usize));
+                }
+            }
+            _ => {
+                return Err(InterpreterError::InvalidArgument(
+                    "index selection expects a value of type int.".to_string(),
+                ));
+            }
+        },
+        None => None,
+    };
+
+    let end_index = match end {
+        Some(v) => match v {
+            Literal::Int(n) => {
+                let n = *n;
+                if n >= 0 && n < len {
+                    Some(n as usize)
+                } else if n < 0 && -(n) <= len {
+                    Some((n + len) as usize)
+                } else {
+                    return Err(InterpreterError::IndexOutOfBounds(n as usize, len as usize));
+                }
+            }
+            _ => {
+                return Err(InterpreterError::InvalidArgument(
+                    "index selection expects a value of type int.".to_string(),
+                ));
+            }
+        },
+        None => None,
+    };
+
+    let step_value = if let Some(Literal::Int(n)) = step {
+        *n
+    } else {
+        1
+    };
+
+    let indices = if step_value.is_positive() {
+        let start_index = start_index.unwrap_or(0);
+        let end_index = end_index.unwrap_or(len as usize);
+
+        if start_index <= end_index {
+            (start_index..end_index)
+                .step_by(step_value as usize)
+                .map(|item| Literal::Int(item as i64))
+                .collect::<Vec<Literal>>()
+        } else {
+            return Err(InterpreterError::ExecutionError("When the step size is positive, the starting index must be equal or less than the ending index.".to_owned()));
+        }
+    } else {
+        let start_index = start_index.unwrap_or((len - 1) as usize);
+        let end_index = end_index.unwrap_or(0);
+
+        if start_index >= end_index {
+            let mut indexs = Vec::new();
+            let mut st = start_index as i64;
+            while st >= end_index as i64 {
+                indexs.push(st);
+                st += step_value;
+            }
+
+            indexs
+                .iter()
+                .map(|item| Literal::Int(*item as i64))
+                .collect::<Vec<Literal>>()
+        } else {
+            return Err(InterpreterError::ExecutionError("When the step size is negative, the starting index must be equal or greater than the ending index.".to_owned()));
+        }
+    };
+
     apply_multiple_indices(it, &indices)
 }

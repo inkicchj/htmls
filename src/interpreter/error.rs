@@ -23,7 +23,7 @@ pub enum InterpreterError {
     IndexOutOfBounds(usize, usize),
 
     /// Invalid step value
-    InvalidStep(usize),
+    InvalidStep(i64),
 
     /// Regular expression error
     InvalidRegex(String),

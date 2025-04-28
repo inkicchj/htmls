@@ -128,6 +128,18 @@ Complex set operations can be grouped with parentheses:
 
 ### Update History
 
+**0.1.6 (2025.04.28)**
+
+1. Improved the index selection feature, which now allows for:
+
+    `tag p:-1,-2`
+
+    `tag p:10:2:-2`
+
+    `tag p:::-1`
+
+    `tag p:-1:-4`
+
 **0.1.5 (2025.04.28)**
 
 1. Added the `#` operator for selecting attribute text values.
