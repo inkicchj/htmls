@@ -133,7 +133,9 @@ Complex set operations can be grouped with parentheses:
 
 1. Optimized the lexical analysis of float literal.
 
-2. Added a new `slice` function for string slicing.
+2. Added `nil`.
+
+3. Added a new `slice` function for string slicing.
 
     `@slice,1,5`. When the parameter is `nil`, `@slice,nil,5` is equivalent to `@slice,0,5`, and `@slice,0,nil` is equivalent to `@slice,0,(str.len())`.
 
